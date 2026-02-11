@@ -7,6 +7,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -75,6 +76,12 @@ func BuildDSN(host, port, user, password, dbname string) string {
 
 // Migrate runs database migrations
 func (d *Database) Migrate() error {
+	// For PostgreSQL, skip AutoMigrate if tables already exist (prevents "insufficient arguments" error)
+	// Tables were created during initial deployment
+	if d.Driver == "postgres" {
+		log.Println("Skipping PostgreSQL AutoMigrate - tables already exist")
+		return nil
+	}
 	return d.DB.AutoMigrate(
 		&models.Tenant{},
 		&models.Event{},
