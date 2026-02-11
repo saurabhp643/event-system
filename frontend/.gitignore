@@ -37,3 +37,4 @@ coverage/
 *.pem
 .cache/
 .parcel-cache/
+.vercel

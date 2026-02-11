@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -116,18 +117,26 @@ func main() {
 	// Initialize handlers
 	handler := handlers.NewHandler(db, hub, authMiddleware)
 
+	// Determine port - use PORT env var (set by Render) or config default
+	port := cfg.App.Port
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+
 	// Setup router
 	router := setupRouter(handler, authMiddleware, rateLimiter, cfg, db)
 
 	// Create server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port),
+		Addr:    fmt.Sprintf("%s:%d", cfg.App.Host, port),
 		Handler: router,
 	}
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Starting server on %s:%d", cfg.App.Host, cfg.App.Port)
+		log.Printf("Starting server on %s:%d", cfg.App.Host, port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
