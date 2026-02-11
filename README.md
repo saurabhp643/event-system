@@ -115,9 +115,6 @@ The system follows a clean layered architecture with clear separation of concern
 - **Toast Notifications**: User feedback for success/error states
 - **Connection Status**: Visual indicator for WebSocket connectivity
 
-### Additional Features
-- **Webhook Support**: Configurable webhook delivery for specific event types
-- **RAG-style Search**: Full-text search over event metadata
 
 ## Trade-offs & Assumptions
 
