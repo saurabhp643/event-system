@@ -1,4 +1,5 @@
 # Multi-stage build for full-stack application
+
 # Stage 1: Build Go backend
 FROM golang:1.21-alpine AS backend-builder
 
@@ -11,8 +12,8 @@ RUN go mod download
 # Copy the rest of the backend application
 COPY backend/ ./
 
-# Build the Go application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/server ./backend
+# Build the Go application from current directory (.)
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/server .
 
 # Stage 2: Build React frontend
 FROM node:20-alpine AS frontend-builder
@@ -61,7 +62,7 @@ WORKDIR /app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:80/health || curl -f http://localhost:8080/health || exit 1
 
 # Entrypoint script manages both Nginx and Go backend
 ENTRYPOINT ["/app/entrypoint.sh"]
