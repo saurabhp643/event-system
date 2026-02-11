@@ -8,6 +8,7 @@ import (
 
 	"event-ingestion-system/internal/models"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -16,24 +17,36 @@ import (
 // Database wraps gorm.DB with configuration
 type Database struct {
 	DB              *gorm.DB
+	Driver          string
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
 }
 
 // NewDatabase creates a new database connection
-func NewDatabase(dsn string, maxOpenConns, maxIdleConns int, connMaxLifetime time.Duration) (*Database, error) {
-	// Create directory if it doesn't exist
-	dir := filepath.Dir(dsn)
-	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create database directory: %w", err)
+func NewDatabase(driver, dsn string, maxOpenConns, maxIdleConns int, connMaxLifetime time.Duration) (*Database, error) {
+	var db *gorm.DB
+	var err error
+
+	if driver == "postgres" {
+		// PostgreSQL connection
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	} else {
+		// SQLite connection (default)
+		// Create directory if it doesn't exist
+		dir := filepath.Dir(dsn)
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create database directory: %w", err)
+			}
 		}
+		db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
 	}
 
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -49,10 +62,17 @@ func NewDatabase(dsn string, maxOpenConns, maxIdleConns int, connMaxLifetime tim
 
 	return &Database{
 		DB:              db,
+		Driver:          driver,
 		MaxOpenConns:    maxOpenConns,
 		MaxIdleConns:    maxIdleConns,
 		ConnMaxLifetime: connMaxLifetime,
 	}, nil
+}
+
+// BuildDSN builds a PostgreSQL connection string from components
+func BuildDSN(host, port, user, password, dbname string) string {
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
 }
 
 // Migrate runs database migrations
