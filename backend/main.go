@@ -30,26 +30,49 @@ func main() {
 	// Set Gin mode
 	gin.SetMode(cfg.App.Mode)
 
+	// Determine database driver from environment or config
+	driver := os.Getenv("DB_DRIVER")
+	if driver == "" {
+		driver = cfg.Database.Driver
+	}
+
 	// Determine DSN based on driver
 	var dsn string
-	if cfg.Database.Driver == "postgres" {
-		// PostgreSQL: Build DSN from environment variables or config
-		// Expects DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-		dsn = database.BuildDSN(
-			cfg.Database.Host,
-			"5432", // Default PostgreSQL port
-			os.Getenv("DB_USER"),
-			os.Getenv("DB_PASSWORD"),
-			"render", // Default database name on Render
-		)
+	var dbHost string
+	var dbPort string
+	var dbUser string
+	var dbPassword string
+	var dbName string
+
+	if driver == "postgres" {
+		// PostgreSQL: Read from environment variables
+		dbHost = os.Getenv("DB_HOST")
+		dbPort = os.Getenv("DB_PORT")
+		if dbPort == "" {
+			dbPort = "5432"
+		}
+		dbUser = os.Getenv("DB_USER")
+		dbPassword = os.Getenv("DB_PASSWORD")
+		dbName = os.Getenv("DB_NAME")
+		if dbName == "" {
+			dbName = "render"
+		}
+
+		if dbHost == "" || dbUser == "" || dbPassword == "" {
+			log.Fatal("PostgreSQL configuration error: DB_HOST, DB_USER, and DB_PASSWORD are required")
+		}
+
+		dsn = database.BuildDSN(dbHost, dbPort, dbUser, dbPassword, dbName)
+		log.Printf("Connecting to PostgreSQL: host=%s port=%s database=%s", dbHost, dbPort, dbName)
 	} else {
 		// SQLite: Use the host field as file path
 		dsn = cfg.Database.Host
+		log.Printf("Using SQLite database: %s", dsn)
 	}
 
 	// Initialize database
 	db, err := database.NewDatabase(
-		cfg.Database.Driver,
+		driver,
 		dsn,
 		cfg.Database.MaxOpenConns,
 		cfg.Database.MaxIdleConns,
