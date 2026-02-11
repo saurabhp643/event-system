@@ -46,6 +46,7 @@ RUN mkdir -p /app/backend /app/data
 
 # Copy Go binary from backend-builder
 COPY --from=backend-builder /app/bin/server /app/backend/server
+COPY --from=backend-builder /app/config.yaml /app/backend/config.yaml
 
 # Copy built frontend files from frontend-builder
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
