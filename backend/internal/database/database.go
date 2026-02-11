@@ -69,7 +69,7 @@ func NewDatabase(driver, dsn string, maxOpenConns, maxIdleConns int, connMaxLife
 
 // BuildDSN builds a PostgreSQL connection string from components
 func BuildDSN(host, port, user, password, dbname string) string {
-	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
 		host, port, user, password, dbname)
 }
 
