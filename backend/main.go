@@ -66,8 +66,12 @@ func main() {
 		dsn = database.BuildDSN(dbHost, dbPort, dbUser, dbPassword, dbName)
 		log.Printf("Connecting to PostgreSQL: host=%s port=%s database=%s", dbHost, dbPort, dbName)
 	} else {
-		// SQLite: Use the host field as file path
-		dsn = cfg.Database.Host
+		// SQLite: Check for DATABASE_PATH env var first, then fall back to config
+		dbPath := os.Getenv("DATABASE_PATH")
+		if dbPath == "" {
+			dbPath = cfg.Database.Host
+		}
+		dsn = dbPath
 		log.Printf("Using SQLite database: %s", dsn)
 	}
 

@@ -9,9 +9,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    volumes:
+      - ./data:/app/data
     environment:
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      - DATABASE_PATH=/tmp/events.db
+      - DATABASE_PATH=/app/data/events.db
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 30s
