@@ -29,7 +29,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   
   const toast = useToast()
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+  // Use relative paths when VITE_API_URL is empty (Docker/Nginx proxy)
+  // In development, set VITE_API_URL=http://localhost:8080/api/v1
+  const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
   useEffect(() => {
     fetchTenants()

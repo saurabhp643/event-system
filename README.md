@@ -46,8 +46,8 @@ A production-ready multi-tenant event ingestion system with real-time dashboard.
 │  │(JWT/API Key)│  │   (Gin)     │  │ (gorilla/websocket) │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Rate Limiter│  │ Event Store │  │ Redis Pub/Sub       │  │
-│  │ (Redis)     │  │(GORM/SQLite)│  │ (Real-time)         │  │
+│  │ Rate Limiter│  │ Event Store │  │ Nginx Proxy         │  │
+│  │ (In-Memory) │  │(GORM/SQLite)│  │ (API + WebSocket)   │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -58,6 +58,7 @@ A production-ready multi-tenant event ingestion system with real-time dashboard.
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
 - **Authentication**: JWT, API Keys
 - **Docker**: Multi-stage builds, docker-compose
+- **Nginx**: Reverse proxy for API and WebSocket
 - **CI/CD**: GitHub Actions
 
 ## Quick Start
@@ -92,7 +93,7 @@ npm run dev
 - API: http://localhost:8080
 - Health Check: http://localhost:8080/health
 
-### Docker Deployment
+### Docker Deployment (Unified Full-Stack)
 
 ```bash
 # Build and run all services
@@ -100,6 +101,8 @@ docker-compose up --build
 
 # Or run in detached mode
 docker-compose up -d --build
+
+# Access the application at http://localhost:8080
 ```
 
 ### Environment Variables
@@ -109,7 +112,6 @@ Create a `.env` file in the root directory:
 ```env
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 DATABASE_PATH=/app/data/events.db
-REDIS_HOST=localhost:6379
 ```
 
 ## API Documentation
@@ -124,7 +126,7 @@ REDIS_HOST=localhost:6379
 | POST | `/api/v1/events` | Ingest an event |
 | GET | `/api/v1/events` | List events (with filtering) |
 | GET | `/api/v1/events/stats` | Get event statistics |
-| GET | `/api/v1/ws` | WebSocket endpoint |
+| GET | `/ws` | WebSocket endpoint |
 | GET | `/health` | Health check |
 
 ### Event Ingestion Request
@@ -155,173 +157,225 @@ Authorization: Bearer your-jwt-token
 
 ## Deployment Guide
 
-### Recommended: Render (Backend) + Vercel (Frontend)
+### Option 3: Render Full-Stack Docker (Recommended for simplicity)
 
-This is the easiest and most reliable combination with free tiers.
+Deploy both frontend and backend as a single Docker container with Nginx reverse proxy.
 
 ---
 
-#### Step 1: Push to GitHub
+#### **Step 1: Create GitHub Repository**
+
+1. **Create a new GitHub repository**
+   - Go to [GitHub](https://github.com)
+   - Click "New repository"
+   - Name: `event-ingestion-system`
+   - Make it **Public** or **Private**
+   - Click "Create repository"
+
+2. **Push your code to GitHub**
+   ```bash
+   cd event-ingestion-system
+   
+   # Initialize git if not already done
+   git init
+   git add .
+   git commit -m "Initial commit: multi-tenant event ingestion system"
+   
+   # Add remote (replace with your username)
+   git remote add origin https://github.com/YOURUSERNAME/event-ingestion-system.git
+   
+   # Push to GitHub
+   git push -u origin main
+   ```
+
+---
+
+#### **Step 2: Create Render Account**
+
+1. **Go to [Render Dashboard](https://dashboard.render.com)**
+2. **Sign up with GitHub**
+   - Click "Sign Up"
+   - Choose "Sign up with GitHub"
+   - Authorize Render
+
+---
+
+#### **Step 3: Deploy with Blueprint (Easiest)**
+
+1. **Click "New +" → "Blueprint"**
+   ![Blueprint Setup](https://render.com/images/docs/blueprints/create-blueprint.png)
+
+2. **Connect your GitHub repository**
+   - Select your `event-ingestion-system` repository
+   - Click "Connect"
+
+3. **Configure the service**
+   Render will automatically detect the `render.yaml` file and configure:
+
+   | Setting | Value |
+   |---------|-------|
+   | Service Type | Web Service |
+   | Environment | Docker |
+   | Plan | Free |
+   | Disk | 1 GB (auto-configured) |
+
+4. **Review environment variables**
+   - `JWT_SECRET`: Auto-generated (secure)
+   - `DATABASE_PATH`: `/app/data/events.db`
+   - `GIN_MODE`: `release`
+   - `PORT`: `80`
+
+5. **Click "Apply Blueprint"**
+
+6. **Wait for deployment**
+   - Build time: ~3-5 minutes
+   - Watch the logs for progress
+
+---
+
+#### **Step 4: Get Your Live URL**
+
+1. **After deployment completes**, you'll see:
+   ```
+   https://event-ingestion.onrender.com
+   ```
+
+2. **Test the deployment**
+   - Open the URL in your browser
+   - You should see the Event Dashboard
+   - Create a tenant
+   - Ingest an event
+   - Watch it appear in real-time
+
+---
+
+#### **Alternative: Manual Web Service Creation**
+
+If Blueprint doesn't work:
+
+1. **Click "New +" → "Web Service"**
+2. **Connect your GitHub repository**
+3. **Configure:**
+   | Setting | Value |
+   |---------|-------|
+   | Environment | Docker |
+   | Plan | Free |
+   | Build Command | (leave empty - uses Dockerfile) |
+   | Start Command | (leave empty - uses ENTRYPOINT) |
+4. **Add Disk:**
+   - Click "Add Disk"
+   - Mount Path: `/app/data`
+   - Size: 1 GB
+   - Name: `events-db`
+5. **Add Environment Variables:**
+   | Key | Value |
+   |-----|-------|
+   | JWT_SECRET | (click "Generate" or enter your own) |
+   | DATABASE_PATH | `/app/data/events.db` |
+   | GIN_MODE | `release` |
+   | PORT | `80` |
+6. **Click "Create Web Service"**
+
+---
+
+#### **Step 5: Verify Your Deployment**
+
+**Test these endpoints:**
 
 ```bash
-cd event-ingestion-system
-git init
-git add .
-git commit -m "Initial commit: multi-tenant event ingestion system"
-git remote add origin https://github.com/yourusername/event-ingestion-system.git
-git push -u origin main
+# Replace with your URL
+export BASE_URL="https://your-app.onrender.com"
+
+# Health check
+curl $BASE_URL/health
+
+# List tenants (create one first via UI)
+curl $BASE_URL/api/v1/tenants
+
+# Create a tenant
+curl -X POST $BASE_URL/api/v1/tenants \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Tenant"}'
+
+# Ingest an event (replace TENANT_ID and API_KEY)
+curl -X POST $BASE_URL/api/v1/events \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{
+    "tenant_id": "YOUR_TENANT_ID",
+    "event_type": "page_view",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "metadata": {"page": "/home"}
+  }'
 ```
 
 ---
 
-#### Step 2: Deploy Backend to Render
+#### **Step 6: View Logs (Troubleshooting)**
 
-1. **Create Render Account**
-   - Go to [Render Dashboard](https://dashboard.render.com)
-   - Sign up with GitHub
+1. **Go to your Render dashboard**
+2. **Click on your service**
+3. **Click "Logs" tab**
+4. **Filter by:**
+   - `All logs` - see everything
+   - `Errors` - see only errors
+   - `Events` - see deployment events
 
-2. **Create PostgreSQL Database**
-   - Click "New +" → "PostgreSQL"
-   - Name: `event-ingestion-db`
-   - Select free plan
-   - Click "Create Database"
-   - **Note**: Copy the "Internal Database URL" (you'll need it later)
-
-3. **Create Backend Web Service**
-   - Click "New +" → "Web Service"
-   - Connect your GitHub repository
-   - Configure:
-     - **Name**: `event-ingestion-backend`
-     - **Branch**: `main`
-     - **Build Command**: `cd backend && go build -o bin/server .`
-     - **Start Command**: `./bin/server`
-     - **Environment Variables**: Click "Add" and add:
-       - `DB_HOST`: From PostgreSQL connection string (host part)
-       - `DB_PORT`: `5432`
-       - `DB_USER`: From PostgreSQL connection string (user part)
-       - `DB_PASSWORD`: From PostgreSQL connection string (password part)
-       - `DB_NAME`: `render` (or as specified)
-       - `GIN_MODE`: `release`
-       - `PORT`: `10000`
-   - Click "Create Web Service"
-
-4. **Get Backend URL**
-   - Wait for deployment to complete
-   - Copy the service URL (e.g., `https://event-ingestion-backend.onrender.com`)
+**Common log messages:**
+- `Starting Event Ingestion System...` - App is starting
+- `Starting Go backend server...` - Backend starting
+- `Backend server started (PID: ...)` - Backend running
+- `Starting Nginx...` - Nginx starting
+- `All services started. Application is ready.` - All good!
 
 ---
 
-#### Step 3: Deploy Frontend to Vercel
+#### **Step 7: Update Your Deployment**
 
-1. **Create Vercel Account**
-   - Go to [Vercel Dashboard](https://vercel.com)
-   - Sign up with GitHub
-
-2. **Import Project**
-   - Click "Add New Project"
-   - Import your GitHub repository
-   - Configure:
-     - **Framework Preset**: `Vite` (or Other)
-     - **Build Command**: `npm run build`
-     - **Output Directory**: `dist`
-     - **Environment Variables**: Add:
-       - `VITE_API_URL`: Your Render backend URL (e.g., `https://event-ingestion-backend.onrender.com`)
-   - Click "Deploy"
-
-3. **Get Frontend URL**
-   - Wait for deployment to complete
-   - Copy the deployed URL (e.g., `https://event-ingestion-system.vercel.app`)
-
----
-
-#### Step 4: Test the Deployment
-
-1. Open your Vercel frontend URL
-2. Select a tenant from the dropdown
-3. View live events in the feed
-4. Test creating a new tenant
-5. Verify WebSocket connection is working
-
----
-
-### Alternative: Docker + Railway
-
-Deploy both services together using Docker:
-
-1. **Create Railway Account**
-   - Go to [Railway](https://railway.app)
-   - Sign up with GitHub
-
-2. **Deploy Backend with Docker**
-   - Click "New Project"
-   - Select "Deploy from GitHub repo"
-   - Connect your repository
-   - Add PostgreSQL plugin
-   - Set environment variables from `.env`
-   - Deploy using Dockerfile or docker-compose.yml
-
-3. **Deploy Frontend with Docker**
-   - Create a new Railway service
-   - Connect your repository
-   - Configure build and start commands
-   - Set `VITE_API_URL` to your backend URL
-
----
-
-### Alternative: Render (Full Stack with Docker)
-
-Deploy both frontend and backend as a single Docker service:
-
-1. Use the existing `Dockerfile` in root directory
-2. Connect to Render
-3. Configure:
-   - Build Command: `docker build -t event-ingestion .`
-   - Start Command: `docker run -p 10000:8080 event-ingestion`
-4. Set all environment variables
-5. Deploy
-
----
-
-### Alternative: Google Cloud Run
-
-1. **Create Google Cloud Account**
-   - Go to [Google Cloud Console](https://console.cloud.google.com)
-   - Create a new project
-
-2. **Enable Required APIs**
-   - Cloud Run API
-   - Cloud SQL Admin API
-
-3. **Deploy Backend**
+1. **Make changes to code**
+2. **Commit and push to GitHub:**
    ```bash
-   gcloud run deploy event-ingestion-backend \
-     --source backend \
-     --platform managed \
-     --region us-central1 \
-     --allow-unauthenticated
+   git add .
+   git commit -m "Your commit message"
+   git push origin main
+   ```
+3. **Render auto-deploys**
+   - Watch the "Events" tab for progress
+   - Deployment takes ~2-3 minutes
+
+---
+
+### Alternative Deployment Options
+
+#### **Option 1: Render (Backend) + Vercel (Frontend)**
+
+See detailed instructions above in the original README.
+
+#### **Option 2: Docker + Railway**
+
+1. **Create Railway Account**: [railway.app](https://railway.app)
+2. **Deploy with Docker:**
+   ```bash
+   npm i -g railway
+   railway login
+   railway init
+   railway add postgresql
+   railway up
    ```
 
-4. **Deploy Frontend**
-   - Build static files: `cd frontend && npm run build`
-   - Deploy to Cloud Run:
-   ```bash
-   gcloud run deploy event-ingestion-frontend \
-     --image gcr.io/PROJECT_ID/frontend \
-     --platform managed \
-     --region us-central1 \
-     --allow-unauthenticated
-   ```
+#### **Option 3: Google Cloud Run**
 
----
+```bash
+# Build and push to Google Container Registry
+gcloud builds submit --tag gcr.io/PROJECT_ID/event-ingestion
 
-### Database Setup (if not using managed service)
-
-| Platform | Free Tier | Connection String Format |
-|----------|-----------|-------------------------|
-| **Supabase** | 500MB | `postgres://user:password@host:5432/db` |
-| **Neon** | 600MB | `postgres://user:password@host:5432/db` |
-| **ElephantSQL** | 20MB | `postgres://user:password@host:5432/db` |
-| **Render PostgreSQL** | Free | Provided in dashboard |
+# Deploy to Cloud Run
+gcloud run deploy event-ingestion \
+  --image gcr.io/PROJECT_ID/event-ingestion \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
 
 ---
 
@@ -367,8 +421,11 @@ event-ingestion-system/
 │   │   └── main.tsx
 │   ├── package.json
 │   └── Dockerfile
-├── docker-compose.yml
-├── Dockerfile
+├── Dockerfile              # Unified full-stack Dockerfile
+├── render.yaml             # Render Blueprint configuration
+├── docker-compose.yml      # Local Docker deployment
+├── nginx.conf              # Nginx reverse proxy config
+├── entrypoint.sh           # Container startup script
 └── README.md
 ```
 
@@ -382,9 +439,9 @@ event-ingestion-system/
 
 ### Frontend (React + TypeScript)
 - Error categorization (network, authentication, validation)
-- User-friendly error messages (no technical jargon)
-- Toast notifications for feedback
-- Retry logic with exponential backoff
+- User-friendly error messages (no technical notifications for feedback
+ jargon)
+- Toast- Retry logic with exponential backoff
 - Loading states for better UX
 
 ## CI/CD Pipeline
