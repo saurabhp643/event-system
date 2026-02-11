@@ -1,0 +1,55 @@
+# Event Ingestion System Configuration
+# All settings can be overridden via environment variables
+
+app:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "release"  # debug, release, test
+  env: "development"
+
+# Database Configuration (SQLite for simplicity, can be swapped for PostgreSQL)
+database:
+  driver: "sqlite"
+  host: "./data/events.db"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+# Redis Configuration (for pub/sub and rate limiting)
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+# JWT Authentication Configuration
+auth:
+  jwt_secret: "your-super-secret-jwt-key-change-in-production"
+  jwt_expiry: 24h
+  api_key_header: "X-API-Key"
+
+# Rate Limiting Configuration (per tenant)
+rate_limit:
+  enabled: true
+  requests_per_minute: 100
+  burst: 20
+
+# WebSocket Configuration
+websocket:
+  ping_interval: 30s
+  pong_timeout: 60s
+  write_timeout: 10s
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+
+# Webhook Configuration (bonus feature)
+webhooks:
+  enabled: true
+  max_retries: 3
+  retry_delay: 5s
+
+# Logging Configuration
+logging:
+  level: "info"
+  format: "json"
