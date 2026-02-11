@@ -30,8 +30,10 @@ function App() {
   
   const toast = useToast()
   // Use relative paths when VITE_API_URL is empty (Docker/Nginx proxy)
-  // In development, set VITE_API_URL=http://localhost:8080/api/v1
-  const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
+  // In development, set VITE_API_URL=http://localhost:8080
+  // In production, set VITE_API_URL=https://event-ingestion-backend.onrender.com
+  const API_BASE = import.meta.env.VITE_API_URL ? 
+    `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
   useEffect(() => {
     fetchTenants()

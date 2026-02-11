@@ -17,7 +17,9 @@ export default function CreateTenantForm({ onClose, onCreated }: CreateTenantFor
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
+  // Append /api/v1 to VITE_API_URL if it doesn't already include it
+  const API_BASE = import.meta.env.VITE_API_URL ? 
+    `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

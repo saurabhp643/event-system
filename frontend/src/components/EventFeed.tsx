@@ -23,9 +23,13 @@ export default function EventFeed({ tenantId, tenantApiKey, tenantName, connecti
   const eventsEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
-  const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
-  // Use relative paths for WebSocket when VITE_WS_URL is empty (Docker/Nginx proxy)
-  const WS_URL = import.meta.env.VITE_WS_URL || 'ws://' + window.location.host + '/ws'
+  // Append /api/v1 to VITE_API_URL if it doesn't already include it
+  const API_BASE = import.meta.env.VITE_API_URL ? 
+    `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
+  // Use VITE_API_URL for WebSocket URL, replace https with wss and http with ws
+  const WS_URL = import.meta.env.VITE_API_URL ? 
+    import.meta.env.VITE_API_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/api/v1/ws' : 
+    'ws://' + window.location.host + '/ws'
 
   // WebSocket connection
   useEffect(() => {
