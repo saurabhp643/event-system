@@ -13,7 +13,7 @@ export default function EventIngestForm({ tenantId, tenantApiKey, onClose, onEve
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+  const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
