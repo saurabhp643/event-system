@@ -7,10 +7,12 @@ app:
   mode: "release"  # debug, release, test
   env: "development"
 
-# Database Configuration (SQLite for simplicity, can be swapped for PostgreSQL)
+# Database Configuration
+# Use "sqlite" for local development, "postgres" for production
+# For PostgreSQL, set DB_DRIVER=postgres and configure DB_* env variables
 database:
-  driver: "sqlite"
-  host: "./data/events.db"
+  driver: "sqlite"  # Options: sqlite, postgres
+  host: "./data/events.db"  # SQLite: file path, PostgreSQL: host
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: 5m

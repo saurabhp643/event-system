@@ -30,9 +30,27 @@ func main() {
 	// Set Gin mode
 	gin.SetMode(cfg.App.Mode)
 
+	// Determine DSN based on driver
+	var dsn string
+	if cfg.Database.Driver == "postgres" {
+		// PostgreSQL: Build DSN from environment variables or config
+		// Expects DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+		dsn = database.BuildDSN(
+			cfg.Database.Host,
+			"5432", // Default PostgreSQL port
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			"render", // Default database name on Render
+		)
+	} else {
+		// SQLite: Use the host field as file path
+		dsn = cfg.Database.Host
+	}
+
 	// Initialize database
 	db, err := database.NewDatabase(
-		cfg.Database.Host,
+		cfg.Database.Driver,
+		dsn,
 		cfg.Database.MaxOpenConns,
 		cfg.Database.MaxIdleConns,
 		cfg.Database.ConnMaxLifetime,

@@ -8,7 +8,7 @@ A production-ready multi-tenant event ingestion system with real-time dashboard.
 - **Tenant Management**: Create and manage multiple isolated tenants
 - **Event Ingestion API**: RESTful API to ingest events with metadata
 - **Real-Time Streaming**: WebSocket endpoint for live event streaming
-- **Persistence**: SQLite database for reliable storage
+- **Persistence**: SQLite (local) / PostgreSQL (production) via GORM
 - **Authentication**: JWT tokens and API key authentication
 - **Rate Limiting**: Per-tenant rate limiting to prevent abuse
 
@@ -31,35 +31,53 @@ A production-ready multi-tenant event ingestion system with real-time dashboard.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Frontend (React + TS)                │
-│  ┌─────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Tenant      │  │ Live Event Feed │  │ Event Search    │  │
-│  │ Selector    │  │ (WebSocket)     │  │ & Filters       │  │
-│  └─────────────┘  └─────────────────┘  └─────────────────┘  │
+│                        Frontend (React + TypeScript)       │
+│  ┌─────────────┐  ┌─────────────────┐  ┌─────────────────┐│
+│  │ Tenant      │  │ Live Event Feed │  │ Event Search    ││
+│  │ Selector    │  │ (WebSocket)     │  │ & Filters       ││
+│  └─────────────┘  └─────────────────┘  └─────────────────┘│
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Backend (Golang)                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Auth        │  │ REST API    │  │ WebSocket Server    │  │
-│  │(JWT/API Key)│  │   (Gin)     │  │ (gorilla/websocket) │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Rate Limiter│  │ Event Store │  │ Nginx Proxy         │  │
-│  │ (In-Memory) │  │(GORM/SQLite)│  │ (API + WebSocket)   │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐│
+│  │ Auth        │  │ REST API    │  │ WebSocket Server    ││
+│  │(JWT/API Key)│  │   (Gin)     │  │ (gorilla/websocket) ││
+│  └─────────────┘  └─────────────┘  └─────────────────────┘│
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐│
+│  │ Rate Limiter│  │ Event Store │  │ Nginx Proxy         ││
+│  │ (In-Memory) │  │(GORM)       │  │ (Production)        ││
+│  └─────────────┘  └─────────────┘  └─────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Tech Stack
 
-- **Backend**: Go 1.21, Gin, GORM, SQLite, gorilla/websocket
+- **Backend**: Go 1.21, Gin, GORM, SQLite/PostgreSQL, gorilla/websocket
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
 - **Authentication**: JWT, API Keys
 - **Docker**: Multi-stage builds, docker-compose
-- **Nginx**: Reverse proxy for API and WebSocket
+- **Nginx**: Reverse proxy for production
 - **CI/CD**: GitHub Actions
+
+## Database Support
+
+### Local Development (SQLite)
+Default configuration uses SQLite for simplicity:
+```yaml
+database:
+  driver: "sqlite"
+  host: "./data/events.db"
+```
+
+### Production Deployment (PostgreSQL)
+For production, use PostgreSQL for better reliability:
+```yaml
+database:
+  driver: "postgres"
+  host: "your-db-host.internal"
+```
 
 ## Quick Start
 
@@ -67,7 +85,7 @@ A production-ready multi-tenant event ingestion system with real-time dashboard.
 - Docker & Docker Compose
 - Node.js 20+ (for local development)
 
-### Development
+### Local Development
 
 1. **Clone the repository**
 ```bash
@@ -110,8 +128,19 @@ docker-compose up -d --build
 Create a `.env` file in the root directory:
 
 ```env
+# For SQLite (local development)
+DB_DRIVER=sqlite
+DATABASE_PATH=./data/events.db
+
+# For PostgreSQL (production)
+DB_DRIVER=postgres
+DB_HOST=your-render-db-host.internal
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your-password
+DB_NAME=render
+
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
-DATABASE_PATH=/app/data/events.db
 ```
 
 ## API Documentation
@@ -126,7 +155,7 @@ DATABASE_PATH=/app/data/events.db
 | POST | `/api/v1/events` | Ingest an event |
 | GET | `/api/v1/events` | List events (with filtering) |
 | GET | `/api/v1/events/stats` | Get event statistics |
-| GET | `/ws` | WebSocket endpoint |
+| GET | `/api/v1/ws` | WebSocket endpoint |
 | GET | `/health` | Health check |
 
 ### Event Ingestion Request
@@ -157,204 +186,116 @@ Authorization: Bearer your-jwt-token
 
 ## Deployment Guide
 
-### Option 3: Render Full-Stack Docker (Recommended for simplicity)
+### Recommended: Render + Vercel
 
-Deploy both frontend and backend as a single Docker container with Nginx reverse proxy.
+#### Backend on Render (with PostgreSQL)
 
----
+1. **Create Render Account**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Sign up with GitHub
 
-#### **Step 1: Create GitHub Repository**
+2. **Create PostgreSQL Database**
+   - Click "New +" → "PostgreSQL"
+   - Name: `event-ingestion-db`
+   - Select free plan
+   - Click "Create Database"
+   - **Important**: Copy the "Internal Database URL" (format: `postgres://user:password@host:5432/db`)
 
-1. **Create a new GitHub repository**
-   - Go to [GitHub](https://github.com)
-   - Click "New repository"
-   - Name: `event-ingestion-system`
-   - Make it **Public** or **Private**
-   - Click "Create repository"
+3. **Create Backend Web Service**
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Configure:
+     - **Name**: `event-ingestion-backend`
+     - **Branch**: `main`
+     - **Build Command**: `cd backend && go build -o bin/server .`
+     - **Start Command**: `./bin/server`
+     - **Environment Variables**: Click "Add" and add:
+       | Key | Value |
+       |-----|-------|
+       | `DB_DRIVER` | `postgres` |
+       | `DB_HOST` | Host from PostgreSQL URL (before `:`) |
+       | `DB_PORT` | `5432` |
+       | `DB_USER` | User from PostgreSQL URL |
+       | `DB_PASSWORD` | Password from PostgreSQL URL |
+       | `DB_NAME` | `render` (or as specified) |
+       | `GIN_MODE` | `release` |
+       | `PORT` | `10000` |
+       | `JWT_SECRET` | (generate a secure random string) |
+   - Click "Create Web Service"
 
-2. **Push your code to GitHub**
-   ```bash
-   cd event-ingestion-system
-   
-   # Initialize git if not already done
-   git init
-   git add .
-   git commit -m "Initial commit: multi-tenant event ingestion system"
-   
-   # Add remote (replace with your username)
-   git remote add origin https://github.com/YOURUSERNAME/event-ingestion-system.git
-   
-   # Push to GitHub
-   git push -u origin main
-   ```
+4. **Get Backend URL**
+   - Wait for deployment to complete
+   - Copy the service URL (e.g., `https://event-ingestion-backend.onrender.com`)
 
----
+#### Frontend on Vercel
 
-#### **Step 2: Create Render Account**
+1. **Create Vercel Account**
+   - Go to [Vercel Dashboard](https://vercel.com)
+   - Sign up with GitHub
 
-1. **Go to [Render Dashboard](https://dashboard.render.com)**
-2. **Sign up with GitHub**
-   - Click "Sign Up"
-   - Choose "Sign up with GitHub"
-   - Authorize Render
+2. **Import Project**
+   - Click "Add New Project"
+   - Import your GitHub repository
+   - Configure:
+     - **Framework Preset**: `Vite` (or Other)
+     - **Build Command**: `npm run build`
+     - **Output Directory**: `dist`
+     - **Environment Variables**: Add:
+       | Key | Value |
+       |-----|-------|
+       | `VITE_API_URL` | Your Render backend URL |
+   - Click "Deploy"
 
----
+3. **Get Frontend URL**
+   - Wait for deployment to complete
+   - Copy the deployed URL
 
-#### **Step 3: Deploy with Blueprint (Easiest)**
+#### Test the Deployment
 
-1. **Click "New +" → "Blueprint"**
-   ![Blueprint Setup](https://render.com/images/docs/blueprints/create-blueprint.png)
-
-2. **Connect your GitHub repository**
-   - Select your `event-ingestion-system` repository
-   - Click "Connect"
-
-3. **Configure the service**
-   Render will automatically detect the `render.yaml` file and configure:
-
-   | Setting | Value |
-   |---------|-------|
-   | Service Type | Web Service |
-   | Environment | Docker |
-   | Plan | Free |
-   | Disk | 1 GB (auto-configured) |
-
-4. **Review environment variables**
-   - `JWT_SECRET`: Auto-generated (secure)
-   - `DATABASE_PATH`: `/app/data/events.db`
-   - `GIN_MODE`: `release`
-   - `PORT`: `80`
-
-5. **Click "Apply Blueprint"**
-
-6. **Wait for deployment**
-   - Build time: ~3-5 minutes
-   - Watch the logs for progress
+1. Open your Vercel frontend URL
+2. Select a tenant from the dropdown (or create one)
+3. View live events in the feed
+4. Test creating events and verify they appear in real-time
 
 ---
 
-#### **Step 4: Get Your Live URL**
+### Alternative: Render Full-Stack Docker
 
-1. **After deployment completes**, you'll see:
-   ```
-   https://event-ingestion.onrender.com
-   ```
+Deploy both frontend and backend as a single Docker container:
 
-2. **Test the deployment**
-   - Open the URL in your browser
-   - You should see the Event Dashboard
-   - Create a tenant
-   - Ingest an event
-   - Watch it appear in real-time
-
----
-
-#### **Alternative: Manual Web Service Creation**
-
-If Blueprint doesn't work:
-
-1. **Click "New +" → "Web Service"**
-2. **Connect your GitHub repository**
-3. **Configure:**
-   | Setting | Value |
-   |---------|-------|
-   | Environment | Docker |
-   | Plan | Free |
-   | Build Command | (leave empty - uses Dockerfile) |
-   | Start Command | (leave empty - uses ENTRYPOINT) |
-4. **Add Disk:**
-   - Click "Add Disk"
-   - Mount Path: `/app/data`
-   - Size: 1 GB
-   - Name: `events-db`
-5. **Add Environment Variables:**
-   | Key | Value |
-   |-----|-------|
-   | JWT_SECRET | (click "Generate" or enter your own) |
-   | DATABASE_PATH | `/app/data/events.db` |
-   | GIN_MODE | `release` |
-   | PORT | `80` |
-6. **Click "Create Web Service"**
-
----
-
-#### **Step 5: Verify Your Deployment**
-
-**Test these endpoints:**
-
-```bash
-# Replace with your URL
-export BASE_URL="https://your-app.onrender.com"
-
-# Health check
-curl $BASE_URL/health
-
-# List tenants (create one first via UI)
-curl $BASE_URL/api/v1/tenants
-
-# Create a tenant
-curl -X POST $BASE_URL/api/v1/tenants \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test Tenant"}'
-
-# Ingest an event (replace TENANT_ID and API_KEY)
-curl -X POST $BASE_URL/api/v1/events \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -d '{
-    "tenant_id": "YOUR_TENANT_ID",
-    "event_type": "page_view",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "metadata": {"page": "/home"}
-  }'
-```
-
----
-
-#### **Step 6: View Logs (Troubleshooting)**
-
-1. **Go to your Render dashboard**
-2. **Click on your service**
-3. **Click "Logs" tab**
-4. **Filter by:**
-   - `All logs` - see everything
-   - `Errors` - see only errors
-   - `Events` - see deployment events
-
-**Common log messages:**
-- `Starting Event Ingestion System...` - App is starting
-- `Starting Go backend server...` - Backend starting
-- `Backend server started (PID: ...)` - Backend running
-- `Starting Nginx...` - Nginx starting
-- `All services started. Application is ready.` - All good!
-
----
-
-#### **Step 7: Update Your Deployment**
-
-1. **Make changes to code**
-2. **Commit and push to GitHub:**
+1. **Push to GitHub**
    ```bash
    git add .
-   git commit -m "Your commit message"
+   git commit -m "Initial commit"
    git push origin main
    ```
-3. **Render auto-deploys**
-   - Watch the "Events" tab for progress
-   - Deployment takes ~2-3 minutes
+
+2. **Deploy to Render**
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repo
+   - Configure:
+     - **Environment**: `Docker`
+     - **Build Command**: (leave empty)
+     - **Start Command**: (leave empty)
+   - Add environment variables:
+     | Key | Value |
+     |-----|-------|
+     | `JWT_SECRET` | (generate) |
+     | `DB_DRIVER` | `sqlite` (or `postgres`) |
+     | `DATABASE_PATH` | `/app/data/events.db` |
+   - Add Disk (if using SQLite):
+     - Mount Path: `/app/data`
+     - Size: 1 GB
+   - Click "Create Web Service"
 
 ---
 
-### Alternative Deployment Options
+### Alternative: Docker + Railway
 
-#### **Option 1: Render (Backend) + Vercel (Frontend)**
-
-See detailed instructions above in the original README.
-
-#### **Option 2: Docker + Railway**
+Deploy both services together:
 
 1. **Create Railway Account**: [railway.app](https://railway.app)
-2. **Deploy with Docker:**
+2. **Deploy Backend with Docker**
    ```bash
    npm i -g railway
    railway login
@@ -362,40 +303,34 @@ See detailed instructions above in the original README.
    railway add postgresql
    railway up
    ```
-
-#### **Option 3: Google Cloud Run**
-
-```bash
-# Build and push to Google Container Registry
-gcloud builds submit --tag gcr.io/PROJECT_ID/event-ingestion
-
-# Deploy to Cloud Run
-gcloud run deploy event-ingestion \
-  --image gcr.io/PROJECT_ID/event-ingestion \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
-```
+3. **Set environment variables** in Railway dashboard
 
 ---
 
+## Database Setup Options
+
+| Platform | Free Tier | Best For |
+|----------|-----------|----------|
+| **Render PostgreSQL** | 1GB storage | Production on Render |
+| **Supabase** | 500MB | PostgreSQL with API |
+| **Neon** | 600MB | Serverless PostgreSQL |
+| **ElephantSQL** | 20MB | Small projects |
+
 ## Trade-offs and Assumptions
 
-1. **Database Choice**: Used SQLite for simplicity and portability. In production, PostgreSQL would be preferred for better concurrency and reliability.
+1. **Database Choice**: Default to SQLite for local development, PostgreSQL for production. GORM makes switching seamless.
 
-2. **Rate Limiting**: Implemented in-memory rate limiting. For distributed systems, Redis-based rate limiting would be implemented.
+2. **Rate Limiting**: In-memory rate limiting for simplicity. For distributed systems, use Redis.
 
-3. **No Webhook Retry Queue**: Webhooks are delivered synchronously. A message queue (RabbitMQ/Kafka) would be better for reliable delivery.
+3. **No Webhook Retry Queue**: Webhooks delivered synchronously. For production, use RabbitMQ/Kafka.
 
-4. **No Event Deduplication**: Assuming events are idempotent. Adding deduplication would increase complexity.
+4. **No Event Deduplication**: Assuming events are idempotent.
 
-5. **Single-Instance Deployment**: The current design assumes single-instance deployment. For horizontal scaling, we'd need distributed caching and message queues.
+5. **Single-Instance Deployment**: For horizontal scaling, add distributed caching and message queues.
 
-6. **Basic Search**: Implemented LIKE-based search. For production, Elasticsearch or Algolia would provide better search capabilities.
+6. **Basic Search**: LIKE-based search. For production, consider Elasticsearch.
 
-7. **No Metrics Export**: Prometheus metrics endpoint could be added for monitoring.
-
-8. **Error Handling**: Implemented structured error codes with user-friendly messages. In production, consider adding more detailed error tracking (Sentry, DataDog).
+7. **No Metrics Export**: Could add Prometheus for monitoring.
 
 ## Project Structure
 
@@ -421,27 +356,25 @@ event-ingestion-system/
 │   │   └── main.tsx
 │   ├── package.json
 │   └── Dockerfile
-├── Dockerfile              # Unified full-stack Dockerfile
-├── render.yaml             # Render Blueprint configuration
-├── docker-compose.yml      # Local Docker deployment
-├── nginx.conf              # Nginx reverse proxy config
-├── entrypoint.sh           # Container startup script
+├── Dockerfile
+├── docker-compose.yml
+├── render.yaml
 └── README.md
 ```
 
 ## Error Handling Best Practices
 
 ### Backend (Go)
-- Structured error codes for different error types (Validation, Authentication, Not Found, Rate Limit, Server)
-- Panic recovery middleware prevents crashes
+- Structured error codes (Validation, Authentication, Not Found, Rate Limit, Server)
+- Panic recovery middleware
 - Security headers (XSS protection, HSTS)
 - Request logging with timing
 
 ### Frontend (React + TypeScript)
 - Error categorization (network, authentication, validation)
-- User-friendly error messages (no technical notifications for feedback
- jargon)
-- Toast- Retry logic with exponential backoff
+- User-friendly error messages
+- Toast notifications for feedback
+- Retry logic with exponential backoff
 - Loading states for better UX
 
 ## CI/CD Pipeline
