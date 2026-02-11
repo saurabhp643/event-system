@@ -3,13 +3,11 @@ services:
     name: event-system
     env: docker
     plan: free
-    # No disk on free tier - using in-memory SQLite
-    # For production, upgrade to paid plan with disk
+    # Using PostgreSQL (configured in Render dashboard)
+    # Environment variables: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
     envVars:
       - key: JWT_SECRET
         generateValue: true
-      - key: DATABASE_PATH
-        value: /tmp/events.db
       - key: GIN_MODE
         value: release
       - key: PORT
