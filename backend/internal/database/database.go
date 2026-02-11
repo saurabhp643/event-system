@@ -1,20 +1,18 @@
 package database
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"time"
-
 	"event-ingestion-system/internal/models"
-
+	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"os"
+	"path/filepath"
+	"time"
 )
 
-// Database wraps gorm.DB with configuration
+// Database  gorm.DB with configuration
 type Database struct {
 	DB              *gorm.DB
 	Driver          string
