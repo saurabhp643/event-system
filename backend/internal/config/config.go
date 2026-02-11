@@ -120,6 +120,9 @@ func (c *Config) overrideFromEnv() {
 	}
 
 	// Database Settings
+	if driver := os.Getenv("DB_DRIVER"); driver != "" {
+		c.Database.Driver = driver
+	}
 	if dbPath := os.Getenv("DATABASE_PATH"); dbPath != "" {
 		c.Database.Host = dbPath
 	}

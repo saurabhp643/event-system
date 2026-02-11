@@ -31,8 +31,25 @@ func main() {
 	gin.SetMode(cfg.App.Mode)
 
 	// Initialize database
+	// Build DSN based on driver
+	var dsn string
+	switch cfg.Database.Driver {
+	case "postgres":
+		// PostgreSQL DSN format
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+			cfg.Database.Host,
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_PORT"))
+	default:
+		// SQLite DSN is just the file path
+		dsn = cfg.Database.Host
+	}
+
 	db, err := database.NewDatabase(
-		cfg.Database.Host,
+		cfg.Database.Driver,
+		dsn,
 		cfg.Database.MaxOpenConns,
 		cfg.Database.MaxIdleConns,
 		cfg.Database.ConnMaxLifetime,

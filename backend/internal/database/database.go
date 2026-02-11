@@ -8,6 +8,7 @@ import (
 
 	"event-ingestion-system/internal/models"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,18 +23,34 @@ type Database struct {
 }
 
 // NewDatabase creates a new database connection
-func NewDatabase(dsn string, maxOpenConns, maxIdleConns int, connMaxLifetime time.Duration) (*Database, error) {
-	// Create directory if it doesn't exist
-	dir := filepath.Dir(dsn)
-	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create database directory: %w", err)
+func NewDatabase(driver, dsn string, maxOpenConns, maxIdleConns int, connMaxLifetime time.Duration) (*Database, error) {
+	// For SQLite, create directory if it doesn't exist
+	if driver == "sqlite" {
+		dir := filepath.Dir(dsn)
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create database directory: %w", err)
+			}
 		}
 	}
 
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	var db *gorm.DB
+	var err error
+
+	// Choose driver based on config
+	switch driver {
+	case "postgres":
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	case "sqlite":
+		fallthrough
+	default:
+		db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}

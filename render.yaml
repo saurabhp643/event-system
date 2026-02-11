@@ -4,8 +4,9 @@ services:
     env: docker
     plan: free
     # Using PostgreSQL (configured in Render dashboard)
-    # Environment variables: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
     envVars:
+      - key: DB_DRIVER
+        value: postgres
       - key: JWT_SECRET
         generateValue: true
       - key: GIN_MODE
